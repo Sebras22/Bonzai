@@ -1,80 +1,80 @@
 import { useState, useEffect } from "react";
+import { Dropzone, IMAGE_MIME_TYPE } from "@mantine/dropzone";
+import { Group, JsonInput, MantineProvider, Text, rem } from "@mantine/core";
+import { IconUpload, IconPhoto, IconX } from "@tabler/icons-react";
 import "./App.css";
-
+import "@mantine/core/styles.css";
 import PocketBase from "pocketbase";
 
-function App() {
+const pb = new PocketBase("https://pocketbase.louisrvl.fr");
+pb.autoCancellation(false);
+function App(props) {
     const [recordId, setRecordId] = useState(null);
+    const [newfile, setNewFile] = useState(null);
+    const [veriftest, setVerifTest] = useState(false);
 
-    useEffect(() => {
-        const pb = new PocketBase("https://pocketbase.louisrvl.fr");
-
-        // const data = {
-        //     ahs_max: 123,
-        //     ahs_min: 123,
-        //     botanic: "test",
-        //     genre: "test",
-        //     koppen: "test",
-        //     mycorrhizae: "test",
-        //     name: "HAHA",
-        //     ph_max: 123,
-        //     ph_min: 123,
-        //     usda_max: 123,
-        //     usda_min: 123,
-        //     private: true,
-        // };
-
-        pb.collection("sebr_species")
-            .create(fichier)
-            .then((response) => {
-                console.log("Record created successfully:", response);
-                setRecordId(response.id);
-            })
-            .catch((error) => {
-                console.error("Error creating record:", error);
-            });
-    }, []);
-
-    const JsonFichier = async (event) => {
+    const jsonFichier = async () => {
         try {
-            const fichier = event.target.file[0];
+            //on récupère les données
             const reader = new FileReader();
             reader.onload = async (event) => {
-                const fichiertruc = JSON.parse(event.taerget.result);
-                for (const record of fichier.records) {
-                    const Ajout = await Verification(record.name, record.genre);
-                    if (Ajout) {
-                        const record = await pb
-                            .collection("sebr_species")
-                            .create(fichier);
-                        console.log("Enregistrement ajouté");
+                console.log(event.target.result);
+                //on parse les données
+                const bonzaiList = JSON.parse(event.target.result);
+                //On vérifie si les données existent déjà ou pas (Verification)
+                //on envoie les données vers pocketbase
+
+                bonzaiList.forEach(async (element) => {
+                    const isValid = Verification(element);
+                    if (isValid) {
+                        try {
+                            const result = await pb
+                                .collection("sebr_species")
+                                .create(element);
+                            console.log("Result:", element);
+                        } catch (error) {
+                            console.log("Error:", error);
+                        }
+                    } else {
+                        console.log("raté");
                     }
-                }
+                });
             };
+            reader.readAsText(newfile);
         } catch (error) {
-            console.log("ERREUR");
+            console.log("eeeerrerere", error);
+            console.log("USESTATE TEST", newfile);
         }
     };
-    // const Verification = async () => {
-    //     try {
-    //         const present = await pb
-    //             .collection("sebr_species")
-    //             .where("name", "==", fichiertruc.name)
-    //             .where("genre", "==", fichiertruc.genre)
-    //             .get();
-    //         if (present.lenght > 0) {
-    //             console.log("Erreur");
-    //             return false;
-    //         } else {
-    //             return true;
-    //         }
-    //     } catch (error) {
-    //         console.error("Erreur lors de la vérif");
-    //     }
-    // };
+    const Verification = async (bonzaiList) => {
+        try {
+            const present = await pb
+                .collection("sebr_species")
+                .getFirstListItem(
+                    'name="' +
+                        bonzaiList.name +
+                        '" && genre="' +
+                        bonzaiList.genre +
+                        '"'
+                );
+            // console.log("LAAAAAAAAAAAAAAAAAAAAAA", present);
+            if (present) {
+                console.log("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH");
+                return false;
+            } else {
+                console.log("OKAAAAAAAAYYYYYYYYYYYY");
+                return true;
+            }
+        } catch (error) {
+            console.error("Ce fichier n'existe pas ! Il peut etre push");
+            console.log("ICICICICICICICIC", error);
+            return true;
+        }
+        return true;
+    };
     // const Ajout = async () => {
-    //     const isUnique = await Verification();
-    //     if (isUnique) {
+    //     const solo = await Verification();
+    //     if (solo) {
     //         try {
     //             const record = await pb.collection("sebr_species").create(data);
     //             console.log("Enregistrement ajouté avec succès !");
@@ -86,14 +86,80 @@ function App() {
     //         }
     //     }
     // };
-
+    console.log(newfile);
     return (
-        <div>
-            <input type="file" accept=".json" onChange={JsonFichier} />
-            {recordId
-                ? `Record created with ID: ${recordId}`
-                : "Creating record..."}
-        </div>
+        <MantineProvider>
+            <Dropzone
+                onDrop={(files) => console.log("accepted files", files)}
+                onReject={(files) => console.log("rejected files", files)}
+                maxSize={5 * 1024 ** 2}
+                accept={["application / json"]}
+                {...props}
+                type="file"
+                onChange={(e) => {
+                    console.log(e);
+                    setNewFile(e.target.files[0]);
+                }}
+            >
+                <Group
+                    justify="center"
+                    gap="xl"
+                    mih={220}
+                    style={{ pointerEvents: "none" }}
+                >
+                    <Dropzone.Accept>
+                        <IconUpload
+                            style={{
+                                width: rem(52),
+                                height: rem(52),
+                                color: "var(--mantine-color-blue-6)",
+                            }}
+                            stroke={1.5}
+                        />
+                    </Dropzone.Accept>
+                    <Dropzone.Reject>
+                        <IconX
+                            style={{
+                                width: rem(52),
+                                height: rem(52),
+                                color: "var(--mantine-color-red-6)",
+                            }}
+                            stroke={1.5}
+                        />
+                    </Dropzone.Reject>
+                    <Dropzone.Idle>
+                        <IconPhoto
+                            style={{
+                                width: rem(52),
+                                height: rem(52),
+                                color: "var(--mantine-color-dimmed)",
+                            }}
+                            stroke={1.5}
+                        />
+                    </Dropzone.Idle>
+
+                    <div>
+                        <Text size="xl" inline>
+                            Drag images here or click to select files
+                        </Text>
+                        <Text size="sm" c="dimmed" inline mt={7}>
+                            Attach as many files as you like, each file should
+                            not exceed 5mb
+                        </Text>
+                    </div>
+                </Group>
+            </Dropzone>
+            <input
+                type="file"
+                accept=".json"
+                onChange={(e) => {
+                    console.log(e);
+                    setNewFile(e.target.files[0]);
+                }}
+            />
+            <button onClick={jsonFichier}>Envoyer</button>
+            {recordId ? `${recordId}` : "Création"}
+        </MantineProvider>
     );
 }
 
