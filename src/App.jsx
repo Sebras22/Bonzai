@@ -12,35 +12,55 @@ function App(props) {
     const [recordId, setRecordId] = useState(null);
     const [newfile, setNewFile] = useState(null);
     const [veriftest, setVerifTest] = useState(false);
+    const [good, setGood] = useState(0);
+    const [bad, setBad] = useState(0);
 
     const jsonFichier = async () => {
         try {
-            //on récupère les données
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                console.log(event.target.result);
-                //on parse les données
-                const bonzaiList = JSON.parse(event.target.result);
-                //On vérifie si les données existent déjà ou pas (Verification)
-                //on envoie les données vers pocketbase
-
-                bonzaiList.forEach(async (element) => {
-                    const isValid = Verification(element);
-                    if (isValid) {
-                        try {
-                            const result = await pb
-                                .collection("sebr_species")
-                                .create(element);
-                            console.log("Result:", element);
-                        } catch (error) {
-                            console.log("Error:", error);
-                        }
-                    } else {
-                        console.log("raté");
+            let fileAsString = await newfile.text();
+            let fileAsJson = JSON.parse(fileAsString);
+            fileAsJson.forEach(async (element) => {
+                const isValid = Verification(element);
+                if (isValid) {
+                    try {
+                        const result = await pb
+                            .collection("sebr_species")
+                            .create(element);
+                        setGood(good + 1);
+                        console.log("Result:", element);
+                    } catch (error) {
+                        console.log("Error:", error);
                     }
-                });
-            };
-            reader.readAsText(newfile);
+                } else {
+                    console.log("raté");
+                }
+            });
+            // //on récupère les données
+            // const reader = new FileReader();
+            // reader.onload = async (event) => {
+            //     console.log(event.target.result);
+            //     //on parse les données
+            //     const bonzaiList = JSON.parse(event.target.result);
+            //     //On vérifie si les données existent déjà ou pas (Verification)
+            //     //on envoie les données vers pocketbase
+
+            //     bonzaiList.forEach(async (element) => {
+            //         const isValid = Verification(element);
+            //         if (isValid) {
+            //             try {
+            //                 const result = await pb
+            //                     .collection("sebr_species")
+            //                     .create(element);
+            //                 console.log("Result:", element);
+            //             } catch (error) {
+            //                 console.log("Error:", error);
+            //             }
+            //         } else {
+            //             console.log("raté");
+            //         }
+            //     });
+            // };
+            // reader.readAsText(newfile);
         } catch (error) {
             console.log("eeeerrerere", error);
             console.log("USESTATE TEST", newfile);
@@ -60,9 +80,13 @@ function App(props) {
             // console.log("LAAAAAAAAAAAAAAAAAAAAAA", present);
             if (present) {
                 console.log("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH");
+                setGood(good + 1);
+
                 return false;
             } else {
                 console.log("OKAAAAAAAAYYYYYYYYYYYY");
+                setBad(bad + 1);
+
                 return true;
             }
         } catch (error) {
@@ -90,16 +114,18 @@ function App(props) {
     return (
         <MantineProvider>
             <Dropzone
-                onDrop={(files) => console.log("accepted files", files)}
+                onDrop={(files) => {
+                    setNewFile(files[0]);
+                }}
                 onReject={(files) => console.log("rejected files", files)}
                 maxSize={5 * 1024 ** 2}
-                accept={["application / json"]}
+                accept={["application/json"]}
                 {...props}
                 type="file"
-                onChange={(e) => {
-                    console.log(e);
-                    setNewFile(e.target.files[0]);
-                }}
+                // onChange={(e) => {
+                //     console.log(e);
+                //     setNewFile(e.target.files[0]);
+                // }}
             >
                 <Group
                     justify="center"
@@ -158,6 +184,8 @@ function App(props) {
                 }}
             />
             <button onClick={jsonFichier}>Envoyer</button>
+            <div>{good}</div>
+            <div>{bad}</div>
             {recordId ? `${recordId}` : "Création"}
         </MantineProvider>
     );
